@@ -1,0 +1,90 @@
+#include <iostream>
+#include <string>
+#include <unordered_set>
+#include <unordered_map>
+#include <vector>
+
+using namespace std;
+
+// Packet structure
+struct Packet {
+    string sourceIP;
+    string destinationIP;
+    string protocol;
+    bool allowed;
+};
+
+// Firewall class
+class Firewall {
+private:
+    unordered_set<string> allowedIPs;
+    unordered_set<string> allowedProtocols;
+    unordered_map<string, unordered_set<string>> statefulRules;
+
+public:
+    Firewall() {
+        // Initialize with some default rules
+        allowedIPs = {"192.168.1.1", "10.0.0.1"};
+        allowedProtocols = {"TCP", "UDP"};
+        statefulRules["TCP"].insert("ESTABLISHED");
+    }
+
+    void addAllowedIP(const string& ip) {
+        allowedIPs.insert(ip);
+    }
+
+    void addAllowedProtocol(const string& protocol) {
+        allowedProtocols.insert(protocol);
+    }
+
+    void addStatefulRule(const string& protocol, const string& state) {
+        statefulRules[protocol].insert(state);
+    }
+
+    bool isPacketAllowed(const Packet& packet) {
+        // Check if source and destination IPs are allowed
+        bool sourceAllowed = allowedIPs.find(packet.sourceIP) != allowedIPs.end();
+        bool destinationAllowed = allowedIPs.find(packet.destinationIP) != allowedIPs.end();
+
+        // Check if protocol is allowed
+        bool protocolAllowed = allowedProtocols.find(packet.protocol) != allowedProtocols.end();
+
+        // Check if packet state matches stateful rule
+        bool stateAllowed = false;
+        if (statefulRules.find(packet.protocol) != statefulRules.end()) {
+            for (const auto& state : statefulRules[packet.protocol]) {
+                if (state == "ESTABLISHED" && packet.sourceIP == "10.0.0.2" && packet.destinationIP == "192.168.1.1") {
+                    stateAllowed = true;
+                    break;
+                }
+            }
+        }
+
+        // Packet is allowed if all conditions are met
+        return sourceAllowed && destinationAllowed && protocolAllowed && stateAllowed;
+    }
+};
+
+int main() {
+    Firewall firewall;
+
+    // Add custom rules
+    firewall.addAllowedIP("192.168.0.10");
+    firewall.addAllowedProtocol("ICMP");
+    firewall.addStatefulRule("TCP", "ESTABLISHED");
+
+    // Test packets
+    Packet packet1 = {"192.168.0.10", "8.8.8.8", "UDP", false};
+    Packet packet2 = {"192.168.1.1", "10.0.0.1", "TCP", false};
+    Packet packet3 = {"10.0.0.2", "192.168.1.1", "TCP", false};
+    Packet packet4 = {"192.168.0.5", "192.168.1.1", "ICMP", false};
+    Packet packet5 = {"10.0.0.2", "192.168.1.1", "TCP", true};
+
+    cout << "Packet 1 Allowed? " << (firewall.isPacketAllowed(packet1) ? "Yes" : "No") << endl;
+    cout << "Packet 2 Allowed? " << (firewall.isPacketAllowed(packet2) ? "Yes" : "No") << endl;
+    cout << "Packet 3 Allowed? " << (firewall.isPacketAllowed(packet3) ? "Yes" : "No") << endl;
+    cout << "Packet 4 Allowed? " << (firewall.isPacketAllowed(packet4) ? "Yes" : "No") << endl;
+    cout << "Packet 5 Allowed? " << (firewall.isPacketAllowed(packet5) ? "Yes" : "No") << endl;
+
+    return 0;
+}
